@@ -105,11 +105,15 @@ app.post('/fromFlex', async (req: Request, res: Response) => {
 
 // EP4: Webhook from Flex Channel Updates -> Delete Channel?
 app.post('/fromFlexChannelUpdate', async (req: Request, res: Response) => {
-  await client.chat
-    .services(process.env.FLEX_CHAT_SERVICE)
-    .channels(req.body.ChannelSid)
-    .remove();
-  res.sendStatus(200);
+  try {
+    await client.chat
+      .services(process.env.FLEX_CHAT_SERVICE)
+      .channels(req.body.ChannelSid)
+      .remove();
+    res.sendStatus(200);
+  } catch (e) {
+    console.error(e);
+  }
 });
 
 // ================== Functions ==================

@@ -127,22 +127,30 @@ app.post('/fromFlex', function (req, res) { return __awaiter(void 0, void 0, voi
 }); });
 // EP4: Webhook from Flex Channel Updates -> Delete Channel?
 app.post('/fromFlexChannelUpdate', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var e_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, client.chat
-                    .services(process.env.FLEX_CHAT_SERVICE)
-                    .channels(req.body.ChannelSid)
-                    .remove()];
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, client.chat
+                        .services(process.env.FLEX_CHAT_SERVICE)
+                        .channels(req.body.ChannelSid)
+                        .remove()];
             case 1:
                 _a.sent();
                 res.sendStatus(200);
-                return [2 /*return*/];
+                return [3 /*break*/, 3];
+            case 2:
+                e_1 = _a.sent();
+                console.error(e_1);
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
     });
 }); });
 // ================== Functions ==================
 var createNewChannel = function (flexFlowSid, flexChatService, identity) { return __awaiter(void 0, void 0, void 0, function () {
-    var flexChannel, channelExists, e_1;
+    var flexChannel, channelExists, e_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -187,8 +195,8 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                 _a.label = 5;
             case 5: return [3 /*break*/, 7];
             case 6:
-                e_1 = _a.sent();
-                console.error(e_1);
+                e_2 = _a.sent();
+                console.error(e_2);
                 return [3 /*break*/, 7];
             case 7: return [2 /*return*/, flexChannel];
         }
