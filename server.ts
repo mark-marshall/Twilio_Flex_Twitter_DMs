@@ -101,8 +101,8 @@ const createNewChannel = async (
     flexChannel = await client.flexApi.channel.create({
       flexFlowSid,
       identity: `@${identity}`,
-      chatUserFriendlyName: `Twitter DM from @${identity}`,
-      chatFriendlyName: `Twitter DM from @${identity}`,
+      chatUserFriendlyName: `Chat with @${identity}`,
+      chatFriendlyName: `Chat with @${identity}`,
       target: `@${identity}`,
     });
     // Each service can have up to 5 webhooks and duplicating webhooks results in duplicate flows between Twitter and Flex
@@ -166,7 +166,7 @@ const hasOpenChannel = async (senderId: string) => {
     .services(process.env.FLEX_CHAT_SERVICE as string)
     .channels.list();
   const openChannelExists =
-    chats.filter((c: any) => JSON.parse(c.attributes).from === senderId)
+    chats.filter((c: any) => JSON.parse(c.attributes).from.includes(senderId))
       .length > 0;
   return openChannelExists;
 };
@@ -195,6 +195,7 @@ const sendMessageToFlex = async (msg: string, senderId: string) => {
 };
 
 const sendMessageToTwitter = async (msg: string, handle: string) => {
+  console.log('');
   // Get the users id from their handle
   twitterClient.get(
     'users/show',

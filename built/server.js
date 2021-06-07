@@ -152,8 +152,8 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                 return [4 /*yield*/, client.flexApi.channel.create({
                         flexFlowSid: flexFlowSid,
                         identity: "@" + identity,
-                        chatUserFriendlyName: "Twitter DM from @" + identity,
-                        chatFriendlyName: "Twitter DM from @" + identity,
+                        chatUserFriendlyName: "Chat with @" + identity,
+                        chatFriendlyName: "Chat with @" + identity,
                         target: "@" + identity
                     })];
             case 2:
@@ -228,7 +228,7 @@ var hasOpenChannel = function (senderId) { return __awaiter(void 0, void 0, void
                     .channels.list()];
             case 1:
                 chats = _a.sent();
-                openChannelExists = chats.filter(function (c) { return JSON.parse(c.attributes).from === senderId; })
+                openChannelExists = chats.filter(function (c) { return JSON.parse(c.attributes).from.includes(senderId); })
                     .length > 0;
                 return [2 /*return*/, openChannelExists];
         }
@@ -265,6 +265,7 @@ var sendMessageToFlex = function (msg, senderId) { return __awaiter(void 0, void
 }); };
 var sendMessageToTwitter = function (msg, handle) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
+        console.log('');
         // Get the users id from their handle
         twitterClient.get('users/show', {
             screen_name: handle
