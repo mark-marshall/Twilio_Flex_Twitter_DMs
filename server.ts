@@ -61,44 +61,14 @@ app.post('/twebhooks', function (req: Request, res: Response) {
   res.sendStatus(200);
 });
 
-// EP3: Webhook from Flex Agent -> Send Twitter DM to Customer
+// EP4: Webhook from Flex Agent -> Send Twitter DM to Customer
 app.post('/fromFlex', async (req: Request, res: Response) => {
   // Source will be 'API' for Twitter customer side, 'SDK' for Flex agent side
   if (req.body.Source === 'SDK') {
     // Get the username, get the Twitter id, then send DM via the id
-    const userName = await getUserFromChannel(req.body.ChannelSid);
-    twitterClient.get(
-      'users/show',
-      {
-        screen_name: userName,
-      },
-      (error: any, data: any, response: any) => {
-        if (error) {
-          console.error(error);
-        }
-        twitterClient.post(
-          'direct_messages/events/new',
-          {
-            event: {
-              type: 'message_create',
-              message_create: {
-                target: {
-                  recipient_id: data.id_str,
-                },
-                message_data: {
-                  text: req.body.Body,
-                },
-              },
-            },
-          },
-          (error: any) => {
-            if (error) {
-              console.error(error);
-            }
-          }
-        );
-      }
-    );
+    const handle = await getUserFromChannel(req.body.ChannelSid);
+    const msg = req.body.Body;
+    sendMessageToTwitter(msg, handle);
   }
   res.sendStatus(200);
 });
@@ -216,6 +186,90 @@ const sendMessageToFlex = async (msg: string, senderId: string) => {
     flexChanel.sid,
     senderId,
     msg
+  );
+};
+
+const sendMessageToTwitter = async (msg: string, handle: string) => {
+  // Get the users id from their handle
+  twitterClient.get(
+    'users/show',
+    {
+      screen_name: handle,
+    },
+    (error: any, data: any, response: any) => {
+      if (error) {
+        console.error(error);
+      }
+
+      let formattedMsg = msg;
+      let options: { label: string; description?: string }[] = [];
+
+      // Check if the operator used the Options keyword and split the question from the options
+      if (msg.includes('Options')) {
+        const msgSplit = msg.split('Options');
+        const optionsSplit = msgSplit[1].split(',');
+        formattedMsg = msgSplit[0];
+        options = optionsSplit.map((op) => ({ label: op }));
+      } else {
+        // Check if there are any other keywords in the message to trigger a quick reply
+        const quickReplyConfig: {
+          [key: string]: { label: string; description?: string }[];
+        } = {
+          // These times could be gathered from a calendar API for example
+          appointment: [
+            { label: '9:15 AM' },
+            { label: '10:30 AM' },
+            { label: '13:30 PM' },
+            { label: '14:30 PM' },
+          ],
+          // Product categorisation
+          style: [
+            { label: 'Medina', description: 'Natural fitting suit' },
+            { label: 'Valance', description: 'Casual summer suit' },
+            { label: 'Osprey', description: 'Slim fit three-piece' },
+            { label: 'Steeple', description: 'Morning suit' },
+          ],
+        };
+        for (const keyword in quickReplyConfig) {
+          if (msg.includes(keyword)) {
+            options = quickReplyConfig[keyword];
+          }
+        }
+      }
+      // Package the quick reply object
+      const optionsObj =
+        options.length > 0
+          ? {
+              quick_reply: {
+                type: 'options',
+                options,
+              },
+            }
+          : {};
+      // Send the message to Twitter
+      twitterClient.post(
+        'direct_messages/events/new',
+        {
+          event: {
+            type: 'message_create',
+            message_create: {
+              target: {
+                recipient_id: data.id_str,
+              },
+              message_data: {
+                text: formattedMsg,
+                ...optionsObj,
+              },
+            },
+          },
+        },
+        (error: any) => {
+          if (error) {
+            console.error(error);
+          }
+        }
+      );
+    }
   );
 };
 

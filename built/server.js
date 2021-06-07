@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -84,40 +95,18 @@ app.post('/twebhooks', function (req, res) {
     }
     res.sendStatus(200);
 });
-// EP3: Webhook from Flex Agent -> Send Twitter DM to Customer
+// EP4: Webhook from Flex Agent -> Send Twitter DM to Customer
 app.post('/fromFlex', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var userName;
+    var handle, msg;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 if (!(req.body.Source === 'SDK')) return [3 /*break*/, 2];
                 return [4 /*yield*/, getUserFromChannel(req.body.ChannelSid)];
             case 1:
-                userName = _a.sent();
-                twitterClient.get('users/show', {
-                    screen_name: userName
-                }, function (error, data, response) {
-                    if (error) {
-                        console.error(error);
-                    }
-                    twitterClient.post('direct_messages/events/new', {
-                        event: {
-                            type: 'message_create',
-                            message_create: {
-                                target: {
-                                    recipient_id: data.id_str
-                                },
-                                message_data: {
-                                    text: req.body.Body
-                                }
-                            }
-                        }
-                    }, function (error) {
-                        if (error) {
-                            console.error(error);
-                        }
-                    });
-                });
+                handle = _a.sent();
+                msg = req.body.Body;
+                sendMessageToTwitter(msg, handle);
                 _a.label = 2;
             case 2:
                 res.sendStatus(200);
@@ -266,6 +255,77 @@ var sendMessageToFlex = function (msg, senderId) { return __awaiter(void 0, void
                 _a.sent();
                 return [2 /*return*/];
         }
+    });
+}); };
+var sendMessageToTwitter = function (msg, handle) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        // Get the users id from their handle
+        twitterClient.get('users/show', {
+            screen_name: handle
+        }, function (error, data, response) {
+            if (error) {
+                console.error(error);
+            }
+            var formattedMsg = msg;
+            var options = [];
+            // Check if the operator used the Options keyword and split the question from the options
+            if (msg.includes('Options')) {
+                var msgSplit = msg.split('Options');
+                var optionsSplit = msgSplit[1].split(',');
+                formattedMsg = msgSplit[0];
+                options = optionsSplit.map(function (op) { return ({ label: op }); });
+            }
+            else {
+                // Check if there are any other keywords in the message to trigger a quick reply
+                var quickReplyConfig = {
+                    // These times could be gathered from a calendar API for example
+                    appointment: [
+                        { label: '9:15 AM' },
+                        { label: '10:30 AM' },
+                        { label: '13:30 PM' },
+                        { label: '14:30 PM' },
+                    ],
+                    // Product categorisation
+                    style: [
+                        { label: 'Medina', description: 'Natural fitting suit' },
+                        { label: 'Valance', description: 'Casual summer suit' },
+                        { label: 'Osprey', description: 'Slim fit three-piece' },
+                        { label: 'Steeple', description: 'Morning suit' },
+                    ]
+                };
+                for (var keyword in quickReplyConfig) {
+                    if (msg.includes(keyword)) {
+                        options = quickReplyConfig[keyword];
+                    }
+                }
+            }
+            // Package the quick reply object
+            var optionsObj = options.length > 0
+                ? {
+                    quick_reply: {
+                        type: 'options',
+                        options: options
+                    }
+                }
+                : {};
+            // Send the message to Twitter
+            twitterClient.post('direct_messages/events/new', {
+                event: {
+                    type: 'message_create',
+                    message_create: {
+                        target: {
+                            recipient_id: data.id_str
+                        },
+                        message_data: __assign({ text: formattedMsg }, optionsObj)
+                    }
+                }
+            }, function (error) {
+                if (error) {
+                    console.error(error);
+                }
+            });
+        });
+        return [2 /*return*/];
     });
 }); };
 module.exports = app;
