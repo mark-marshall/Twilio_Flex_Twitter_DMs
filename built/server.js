@@ -121,11 +121,13 @@ app.post('/fromFlexChannelUpdate', function (req, res) { return __awaiter(void 0
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
+                // Opportunity to do a warm close here
                 return [4 /*yield*/, client.chat
                         .services(process.env.FLEX_CHAT_SERVICE)
                         .channels(req.body.ChannelSid)
                         .remove()];
             case 1:
+                // Opportunity to do a warm close here
                 _a.sent();
                 res.sendStatus(200);
                 return [3 /*break*/, 3];
@@ -149,10 +151,10 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                 channelExists = _a.sent();
                 return [4 /*yield*/, client.flexApi.channel.create({
                         flexFlowSid: flexFlowSid,
-                        identity: identity,
+                        identity: "@" + identity,
                         chatUserFriendlyName: "Twitter DM from @" + identity,
                         chatFriendlyName: "Twitter DM from @" + identity,
-                        target: identity
+                        target: "@" + identity
                     })];
             case 2:
                 // Identity is unique per channel, if we create a new channel that already exists, there's no penalty to that

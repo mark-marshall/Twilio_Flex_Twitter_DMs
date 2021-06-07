@@ -76,6 +76,7 @@ app.post('/fromFlex', async (req: Request, res: Response) => {
 // EP4: Webhook from Flex Channel Updates -> Delete Channel?
 app.post('/fromFlexChannelUpdate', async (req: Request, res: Response) => {
   try {
+    // Opportunity to do a warm close here
     await client.chat
       .services(process.env.FLEX_CHAT_SERVICE as string)
       .channels(req.body.ChannelSid)
@@ -99,10 +100,10 @@ const createNewChannel = async (
     // We need the channel SID anyway to send the message so we go ahead and do this every time
     flexChannel = await client.flexApi.channel.create({
       flexFlowSid,
-      identity,
+      identity: `@${identity}`,
       chatUserFriendlyName: `Twitter DM from @${identity}`,
       chatFriendlyName: `Twitter DM from @${identity}`,
-      target: identity,
+      target: `@${identity}`,
     });
     // Each service can have up to 5 webhooks and duplicating webhooks results in duplicate flows between Twitter and Flex
     if (!channelExists) {
