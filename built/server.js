@@ -150,8 +150,8 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                 return [4 /*yield*/, client.flexApi.channel.create({
                         flexFlowSid: flexFlowSid,
                         identity: identity,
-                        chatUserFriendlyName: "@" + identity,
-                        chatFriendlyName: "Twitter DM with @" + identity,
+                        chatUserFriendlyName: "Twitter DM from @" + identity,
+                        chatFriendlyName: "Twitter DM from @" + identity,
                         target: identity
                     })];
             case 2:
@@ -164,9 +164,11 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                         .channels(flexChannel.sid)
                         .webhooks.create({
                         type: 'webhook',
-                        'configuration.method': 'POST',
-                        'configuration.url': "https://mmarshall.eu.ngrok.io/fromFlex?channel=" + flexChannel.sid,
-                        'configuration.filters': ['onMessageSent']
+                        configuration: {
+                            method: 'POST',
+                            url: "https://mmarshall.eu.ngrok.io/fromFlex?channel=" + flexChannel.sid,
+                            filters: ['onMessageSent']
+                        }
                     })];
             case 3:
                 _a.sent();
@@ -175,9 +177,11 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                         .channels(flexChannel.sid)
                         .webhooks.create({
                         type: 'webhook',
-                        'configuration.method': 'POST',
-                        'configuration.url': "https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate?channel=" + flexChannel.sid,
-                        'configuration.filters': ['onChannelUpdated']
+                        configuration: {
+                            method: 'POST',
+                            url: "https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate?channel=" + flexChannel.sid,
+                            filters: ['onChannelUpdated']
+                        }
                     })];
             case 4:
                 _a.sent();

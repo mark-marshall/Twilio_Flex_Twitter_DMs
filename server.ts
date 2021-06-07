@@ -1,6 +1,6 @@
 // ================== Type Imports ==================
-import { json } from 'body-parser';
 import { Request, Response } from 'express';
+import type { Twilio } from 'twilio';
 
 // ================== Package Imports ==================
 const express = require('express');
@@ -12,7 +12,7 @@ const fetch = require('node-fetch');
 const Twitter = require('twit');
 
 // ================== Initialise Clients ==================
-const client = twilio(
+const client: Twilio = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
@@ -77,7 +77,7 @@ app.post('/fromFlex', async (req: Request, res: Response) => {
 app.post('/fromFlexChannelUpdate', async (req: Request, res: Response) => {
   try {
     await client.chat
-      .services(process.env.FLEX_CHAT_SERVICE)
+      .services(process.env.FLEX_CHAT_SERVICE as string)
       .channels(req.body.ChannelSid)
       .remove();
     res.sendStatus(200);
@@ -100,8 +100,8 @@ const createNewChannel = async (
     flexChannel = await client.flexApi.channel.create({
       flexFlowSid,
       identity,
-      chatUserFriendlyName: `@${identity}`,
-      chatFriendlyName: `Twitter DM with @${identity}`,
+      chatUserFriendlyName: `Twitter DM from @${identity}`,
+      chatFriendlyName: `Twitter DM from @${identity}`,
       target: identity,
     });
     // Each service can have up to 5 webhooks and duplicating webhooks results in duplicate flows between Twitter and Flex
@@ -111,18 +111,22 @@ const createNewChannel = async (
         .channels(flexChannel.sid)
         .webhooks.create({
           type: 'webhook',
-          'configuration.method': 'POST',
-          'configuration.url': `https://mmarshall.eu.ngrok.io/fromFlex?channel=${flexChannel.sid}`,
-          'configuration.filters': ['onMessageSent'],
+          configuration: {
+            method: 'POST',
+            url: `https://mmarshall.eu.ngrok.io/fromFlex?channel=${flexChannel.sid}`,
+            filters: ['onMessageSent'],
+          },
         });
       await client.chat
         .services(flexChatService)
         .channels(flexChannel.sid)
         .webhooks.create({
           type: 'webhook',
-          'configuration.method': 'POST',
-          'configuration.url': `https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate?channel=${flexChannel.sid}`,
-          'configuration.filters': ['onChannelUpdated'],
+          configuration: {
+            method: 'POST',
+            url: `https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate?channel=${flexChannel.sid}`,
+            filters: ['onChannelUpdated'],
+          },
         });
     }
   } catch (e) {
@@ -158,7 +162,7 @@ const sendChatMessage = async (
 
 const hasOpenChannel = async (senderId: string) => {
   const chats = await client.chat
-    .services(process.env.FLEX_CHAT_SERVICE)
+    .services(process.env.FLEX_CHAT_SERVICE as string)
     .channels.list();
   const openChannelExists =
     chats.filter((c: any) => JSON.parse(c.attributes).from === senderId)
@@ -168,7 +172,7 @@ const hasOpenChannel = async (senderId: string) => {
 
 const getUserFromChannel = async (channelId: string) => {
   const chat = await client.chat
-    .services(process.env.FLEX_CHAT_SERVICE)
+    .services(process.env.FLEX_CHAT_SERVICE as string)
     .channels(channelId)
     .fetch();
   const user = JSON.parse(chat.attributes).from;
@@ -183,7 +187,7 @@ const sendMessageToFlex = async (msg: string, senderId: string) => {
   );
   await sendChatMessage(
     process.env.FLEX_CHAT_SERVICE as string,
-    flexChanel.sid,
+    (flexChanel as any).sid as string,
     senderId,
     msg
   );
@@ -263,7 +267,7 @@ const sendMessageToTwitter = async (msg: string, handle: string) => {
             },
           },
         },
-        (error: any) => {
+        (error: Error) => {
           if (error) {
             console.error(error);
           }
