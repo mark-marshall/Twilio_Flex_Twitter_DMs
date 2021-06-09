@@ -46,6 +46,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArray = (this && this.__spreadArray) || function (to, from) {
+    for (var i = 0, il = from.length, j = to.length; i < il; i++, j++)
+        to[j] = from[i];
+    return to;
+};
 exports.__esModule = true;
 // ================== Package Imports ==================
 var express = require('express');
@@ -116,26 +121,38 @@ app.post('/fromFlex', function (req, res) { return __awaiter(void 0, void 0, voi
 }); });
 // EP4: Webhook from Flex Channel Updates -> Delete Channel?
 app.post('/fromFlexChannelUpdate', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var e_1;
+    return __generator(this, function (_a) {
+        try {
+            // Opportunity to do a warm close here
+            res.sendStatus(200);
+        }
+        catch (e) {
+            console.error(e);
+        }
+        return [2 /*return*/];
+    });
+}); });
+// EP5: Get all conversations for a user -> Stitches all interactions
+// @body { "handle": "@twitterHandle" }
+app.get('/getInteractionHistory', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var handle, interactions, e_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                // Opportunity to do a warm close here
-                return [4 /*yield*/, client.chat
-                        .services(process.env.FLEX_CHAT_SERVICE)
-                        .channels(req.body.ChannelSid)
-                        .remove()];
+                handle = req.body.handle;
+                _a.label = 1;
             case 1:
-                // Opportunity to do a warm close here
-                _a.sent();
-                res.sendStatus(200);
-                return [3 /*break*/, 3];
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, getInteractionsForUser(handle)];
             case 2:
+                interactions = _a.sent();
+                res.status(200).json({ interactions: interactions });
+                return [3 /*break*/, 4];
+            case 3:
                 e_1 = _a.sent();
                 console.error(e_1);
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); });
@@ -219,18 +236,55 @@ var sendChatMessage = function (serviceSid, channelSid, senderId, msg) { return 
         }
     });
 }); };
+// Do SMS with flex, close the channel --> check the attributes obj and see what the status is on it!
 var hasOpenChannel = function (senderId) { return __awaiter(void 0, void 0, void 0, function () {
-    var chats, openChannelExists;
+    var channels, openChannelExists;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, client.chat
                     .services(process.env.FLEX_CHAT_SERVICE)
                     .channels.list()];
             case 1:
-                chats = _a.sent();
-                openChannelExists = chats.filter(function (c) { return JSON.parse(c.attributes).from.includes(senderId); })
-                    .length > 0;
+                channels = _a.sent();
+                openChannelExists = channels.filter(function (c) {
+                    var _a = JSON.parse(c.attributes), from = _a.from, status = _a.status;
+                    return from.includes(senderId) && status !== 'INACTIVE';
+                }).length > 0;
                 return [2 /*return*/, openChannelExists];
+        }
+    });
+}); };
+var getInteractionsForUser = function (senderId) { return __awaiter(void 0, void 0, void 0, function () {
+    var interactions, channels, userChannels, _i, userChannels_1, channel, messageList;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                interactions = [];
+                return [4 /*yield*/, client.chat
+                        .services(process.env.FLEX_CHAT_SERVICE)
+                        .channels.list()];
+            case 1:
+                channels = _a.sent();
+                userChannels = channels
+                    .filter(function (c) { return JSON.parse(c.attributes).from === senderId; })
+                    .sort(function (a, b) { return (a.dateCreated < b.dateCreated ? 1 : -1); });
+                _i = 0, userChannels_1 = userChannels;
+                _a.label = 2;
+            case 2:
+                if (!(_i < userChannels_1.length)) return [3 /*break*/, 5];
+                channel = userChannels_1[_i];
+                return [4 /*yield*/, client.chat
+                        .services(process.env.FLEX_CHAT_SERVICE)
+                        .channels(channel.sid)
+                        .messages.list()];
+            case 3:
+                messageList = _a.sent();
+                interactions = __spreadArray(__spreadArray([], interactions), messageList);
+                _a.label = 4;
+            case 4:
+                _i++;
+                return [3 /*break*/, 2];
+            case 5: return [2 /*return*/, interactions];
         }
     });
 }); };
@@ -265,7 +319,6 @@ var sendMessageToFlex = function (msg, senderId) { return __awaiter(void 0, void
 }); };
 var sendMessageToTwitter = function (msg, handle) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        console.log('');
         // Get the users id from their handle
         twitterClient.get('users/show', {
             screen_name: handle

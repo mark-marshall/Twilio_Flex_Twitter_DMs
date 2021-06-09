@@ -77,11 +77,19 @@ app.post('/fromFlex', async (req: Request, res: Response) => {
 app.post('/fromFlexChannelUpdate', async (req: Request, res: Response) => {
   try {
     // Opportunity to do a warm close here
-    await client.chat
-      .services(process.env.FLEX_CHAT_SERVICE as string)
-      .channels(req.body.ChannelSid)
-      .remove();
     res.sendStatus(200);
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+// EP5: Get all conversations for a user -> Stitches all interactions
+// @body { "handle": "@twitterHandle" }
+app.get('/getInteractionHistory', async (req: Request, res: Response) => {
+  const { handle } = req.body;
+  try {
+    const interactions = await getInteractionsForUser(handle);
+    res.status(200).json({ interactions });
   } catch (e) {
     console.error(e);
   }
@@ -161,14 +169,36 @@ const sendChatMessage = async (
   return res;
 };
 
+// Do SMS with flex, close the channel --> check the attributes obj and see what the status is on it!
 const hasOpenChannel = async (senderId: string) => {
-  const chats = await client.chat
+  const channels = await client.chat
     .services(process.env.FLEX_CHAT_SERVICE as string)
     .channels.list();
   const openChannelExists =
-    chats.filter((c: any) => JSON.parse(c.attributes).from.includes(senderId))
-      .length > 0;
+    channels.filter((c: any) => {
+      const { from, status } = JSON.parse(c.attributes);
+      return from.includes(senderId) && status !== 'INACTIVE';
+    }).length > 0;
   return openChannelExists;
+};
+
+const getInteractionsForUser = async (senderId: string) => {
+  // This type is actually a Twilio "Message Instance"
+  let interactions: any[] = [];
+  const channels = await client.chat
+    .services(process.env.FLEX_CHAT_SERVICE as string)
+    .channels.list();
+  const userChannels = channels
+    .filter((c: any) => JSON.parse(c.attributes).from === senderId)
+    .sort((a, b) => (a.dateCreated < b.dateCreated ? 1 : -1));
+  for (const channel of userChannels) {
+    const messageList = await client.chat
+      .services(process.env.FLEX_CHAT_SERVICE as string)
+      .channels(channel.sid)
+      .messages.list();
+    interactions = [...interactions, ...messageList];
+  }
+  return interactions;
 };
 
 const getUserFromChannel = async (channelId: string) => {
@@ -195,7 +225,6 @@ const sendMessageToFlex = async (msg: string, senderId: string) => {
 };
 
 const sendMessageToTwitter = async (msg: string, handle: string) => {
-  console.log('');
   // Get the users id from their handle
   twitterClient.get(
     'users/show',
