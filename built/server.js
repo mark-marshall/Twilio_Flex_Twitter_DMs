@@ -54,6 +54,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from) {
 exports.__esModule = true;
 // ================== Package Imports ==================
 var express = require('express');
+var cors = require('cors');
 var bodyParser = require('body-parser');
 var createHmac = require('crypto').createHmac;
 var twilio = require('twilio');
@@ -70,6 +71,7 @@ var twitterClient = new Twitter({
 });
 // ================== Initialise App ==================
 var app = express();
+app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 // ================== Endpoints ==================
@@ -102,7 +104,7 @@ app.post('/twebhooks', function (req, res) {
 });
 // EP4: Webhook from Flex Agent -> Send Twitter DM to Customer
 app.post('/fromFlex', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var handle, msg;
+    var handle, msg, type;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -111,7 +113,8 @@ app.post('/fromFlex', function (req, res) { return __awaiter(void 0, void 0, voi
             case 1:
                 handle = _a.sent();
                 msg = req.body.Body;
-                sendMessageToTwitter(msg, handle);
+                type = req.body.Type || 'none';
+                sendMessageToTwitter(msg, handle, type);
                 _a.label = 2;
             case 2:
                 res.sendStatus(200);
@@ -185,7 +188,7 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                         type: 'webhook',
                         configuration: {
                             method: 'POST',
-                            url: "https://mmarshall.eu.ngrok.io/fromFlex?channel=" + flexChannel.sid,
+                            url: 'https://mmarshall.eu.ngrok.io/fromFlex',
                             filters: ['onMessageSent']
                         }
                     })];
@@ -198,7 +201,7 @@ var createNewChannel = function (flexFlowSid, flexChatService, identity) { retur
                         type: 'webhook',
                         configuration: {
                             method: 'POST',
-                            url: "https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate?channel=" + flexChannel.sid,
+                            url: 'https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate',
                             filters: ['onChannelUpdated']
                         }
                     })];
@@ -317,7 +320,7 @@ var sendMessageToFlex = function (msg, senderId) { return __awaiter(void 0, void
         }
     });
 }); };
-var sendMessageToTwitter = function (msg, handle) { return __awaiter(void 0, void 0, void 0, function () {
+var sendMessageToTwitter = function (msg, handle, type) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         // Get the users id from their handle
         twitterClient.get('users/show', {
@@ -329,11 +332,21 @@ var sendMessageToTwitter = function (msg, handle) { return __awaiter(void 0, voi
             var formattedMsg = msg;
             var options = [];
             // Check if the operator used the Options keyword and split the question from the options
+            // Format from agent is: 'txt Options [listOptions (- add description)]
             if (msg.includes('Options')) {
                 var msgSplit = msg.split('Options');
                 var optionsSplit = msgSplit[1].split(',');
                 formattedMsg = msgSplit[0];
-                options = optionsSplit.map(function (op) { return ({ label: op }); });
+                options = optionsSplit.map(function (op) {
+                    var optionDescSplit = op.split('-');
+                    var option = {
+                        label: optionDescSplit[0]
+                    };
+                    if (optionDescSplit.length > 1) {
+                        option.description = optionDescSplit[1];
+                    }
+                    return option;
+                });
             }
             else {
                 // Check if there are any other keywords in the message to trigger a quick reply
@@ -368,6 +381,18 @@ var sendMessageToTwitter = function (msg, handle) { return __awaiter(void 0, voi
                     }
                 }
                 : {};
+            // Package the cta object
+            var ctaObj = type === 'CTA'
+                ? {
+                    ctas: [
+                        {
+                            type: 'web_url',
+                            label: 'Buy Now',
+                            url: 'https://checkout.stripe.com/pay/cs_live_cntUhboU9PsfSSEWZxvdcG9O4kSgZ87ITqUCOG5xYog9WzXHNMgNQGyw#fidkdWxOYHwnPyd1blppbHNgWjA0TFFqUDNBfGZNbDMyTUc1cV1VcH83cXRzYTFANldcZFF3N2RQf1RfZzEyfE5wMHJ0SmhJZ2ZPXzF1UzVrUmdVQFBOcW1gMk9RMXZyNXFuNVdPY09ibU40NTU2MF9TN0NDUCcpJ3VpbGtuQH11anZgYUxhJz8nMnZMPEZANWFhMVVjNjVuZkhIJyknd2BjYHd3YHcnPydtcXF1dj8qKnErZmoqJ3gl'
+                        },
+                    ]
+                }
+                : {};
             // Send the message to Twitter
             twitterClient.post('direct_messages/events/new', {
                 event: {
@@ -376,7 +401,7 @@ var sendMessageToTwitter = function (msg, handle) { return __awaiter(void 0, voi
                         target: {
                             recipient_id: data.id_str
                         },
-                        message_data: __assign({ text: formattedMsg }, optionsObj)
+                        message_data: __assign(__assign({ text: formattedMsg }, optionsObj), ctaObj)
                     }
                 }
             }, function (error) {

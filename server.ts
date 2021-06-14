@@ -4,6 +4,7 @@ import type { Twilio } from 'twilio';
 
 // ================== Package Imports ==================
 const express = require('express');
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const { createHmac } = require('crypto');
 const twilio = require('twilio');
@@ -26,6 +27,7 @@ const twitterClient = new Twitter({
 
 // ================== Initialise App ==================
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -68,7 +70,8 @@ app.post('/fromFlex', async (req: Request, res: Response) => {
     // Get the username, get the Twitter id, then send DM via the id
     const handle = await getUserFromChannel(req.body.ChannelSid);
     const msg = req.body.Body;
-    sendMessageToTwitter(msg, handle);
+    const type = req.body.Type || 'none';
+    sendMessageToTwitter(msg, handle, type);
   }
   res.sendStatus(200);
 });
@@ -122,7 +125,7 @@ const createNewChannel = async (
           type: 'webhook',
           configuration: {
             method: 'POST',
-            url: `https://mmarshall.eu.ngrok.io/fromFlex?channel=${flexChannel.sid}`,
+            url: 'https://mmarshall.eu.ngrok.io/fromFlex',
             filters: ['onMessageSent'],
           },
         });
@@ -133,7 +136,7 @@ const createNewChannel = async (
           type: 'webhook',
           configuration: {
             method: 'POST',
-            url: `https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate?channel=${flexChannel.sid}`,
+            url: 'https://mmarshall.eu.ngrok.io/fromFlexChannelUpdate',
             filters: ['onChannelUpdated'],
           },
         });
@@ -224,7 +227,11 @@ const sendMessageToFlex = async (msg: string, senderId: string) => {
   );
 };
 
-const sendMessageToTwitter = async (msg: string, handle: string) => {
+const sendMessageToTwitter = async (
+  msg: string,
+  handle: string,
+  type: string
+) => {
   // Get the users id from their handle
   twitterClient.get(
     'users/show',
@@ -238,13 +245,22 @@ const sendMessageToTwitter = async (msg: string, handle: string) => {
 
       let formattedMsg = msg;
       let options: { label: string; description?: string }[] = [];
-
       // Check if the operator used the Options keyword and split the question from the options
+      // Format from agent is: 'txt Options [listOptions (- add description)]
       if (msg.includes('Options')) {
         const msgSplit = msg.split('Options');
         const optionsSplit = msgSplit[1].split(',');
         formattedMsg = msgSplit[0];
-        options = optionsSplit.map((op) => ({ label: op }));
+        options = optionsSplit.map((op) => {
+          const optionDescSplit = op.split('-');
+          const option: { label: string; description?: string } = {
+            label: optionDescSplit[0],
+          };
+          if (optionDescSplit.length > 1) {
+            option.description = optionDescSplit[1];
+          }
+          return option;
+        });
       } else {
         // Check if there are any other keywords in the message to trigger a quick reply
         const quickReplyConfig: {
@@ -281,6 +297,19 @@ const sendMessageToTwitter = async (msg: string, handle: string) => {
               },
             }
           : {};
+      // Package the cta object
+      const ctaObj =
+        type === 'CTA'
+          ? {
+              ctas: [
+                {
+                  type: 'web_url',
+                  label: 'Buy Now',
+                  url: 'https://checkout.stripe.com/pay/cs_live_cntUhboU9PsfSSEWZxvdcG9O4kSgZ87ITqUCOG5xYog9WzXHNMgNQGyw#fidkdWxOYHwnPyd1blppbHNgWjA0TFFqUDNBfGZNbDMyTUc1cV1VcH83cXRzYTFANldcZFF3N2RQf1RfZzEyfE5wMHJ0SmhJZ2ZPXzF1UzVrUmdVQFBOcW1gMk9RMXZyNXFuNVdPY09ibU40NTU2MF9TN0NDUCcpJ3VpbGtuQH11anZgYUxhJz8nMnZMPEZANWFhMVVjNjVuZkhIJyknd2BjYHd3YHcnPydtcXF1dj8qKnErZmoqJ3gl',
+                },
+              ],
+            }
+          : {};
       // Send the message to Twitter
       twitterClient.post(
         'direct_messages/events/new',
@@ -294,6 +323,7 @@ const sendMessageToTwitter = async (msg: string, handle: string) => {
               message_data: {
                 text: formattedMsg,
                 ...optionsObj,
+                ...ctaObj,
               },
             },
           },
