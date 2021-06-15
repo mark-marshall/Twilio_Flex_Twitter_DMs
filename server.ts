@@ -181,6 +181,7 @@ const hasOpenChannel = async (senderId: string) => {
   const channels = await client.chat
     .services(process.env.FLEX_CHAT_SERVICE as string)
     .channels.list();
+  // TODO: This any is a Chat Instance Type
   const openChannelExists =
     channels.filter((c: any) => {
       const { from, status } = JSON.parse(c.attributes);
@@ -190,11 +191,12 @@ const hasOpenChannel = async (senderId: string) => {
 };
 
 const getInteractionsForUser = async (senderId: string) => {
-  // This type is actually a Twilio "Message Instance"
+  // TODO: This any is a Message Instance Type
   let interactions: any[] = [];
   const channels = await client.chat
     .services(process.env.FLEX_CHAT_SERVICE as string)
     .channels.list();
+  // TODO: This any is a Channel Instance
   const userChannels = channels
     .filter((c: any) => JSON.parse(c.attributes).from === senderId)
     .sort((a, b) => (a.dateCreated < b.dateCreated ? 1 : -1));
@@ -223,6 +225,7 @@ const sendMessageToFlex = async (msg: string, senderId: string) => {
     process.env.FLEX_CHAT_SERVICE as string,
     senderId
   );
+  // TODO: This any is a Channel Instance
   await sendChatMessage(
     process.env.FLEX_CHAT_SERVICE as string,
     (flexChanel as any).sid as string,
@@ -242,7 +245,8 @@ const sendMessageToTwitter = async (
     {
       screen_name: handle,
     },
-    (error: any, data: any, response: any) => {
+    // TODO: Get TW Types
+    (error: Error, data: any, response: any) => {
       if (error) {
         console.error(error);
       }

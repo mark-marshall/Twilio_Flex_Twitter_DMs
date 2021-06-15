@@ -316,8 +316,10 @@ var sendMessageToFlex = function (msg, senderId) { return __awaiter(void 0, void
             case 0: return [4 /*yield*/, createNewChannel(process.env.FLEX_FLOW_SID, process.env.FLEX_CHAT_SERVICE, senderId)];
             case 1:
                 flexChanel = _a.sent();
+                // TODO: This any is a Channel Instance
                 return [4 /*yield*/, sendChatMessage(process.env.FLEX_CHAT_SERVICE, flexChanel.sid, senderId, msg)];
             case 2:
+                // TODO: This any is a Channel Instance
                 _a.sent();
                 return [2 /*return*/];
         }
@@ -328,7 +330,9 @@ var sendMessageToTwitter = function (msg, handle, type) { return __awaiter(void 
         // Get the users id from their handle
         twitterClient.get('users/show', {
             screen_name: handle
-        }, function (error, data, response) {
+        }, 
+        // TODO: Get TW Types
+        function (error, data, response) {
             if (error) {
                 console.error(error);
             }
