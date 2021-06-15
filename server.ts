@@ -12,6 +12,9 @@ const base64 = require('base-64');
 const fetch = require('node-fetch');
 const Twitter = require('twit');
 
+// ================== Util Imports ==================
+import { quickReplyConfig } from './consts';
+
 // ================== Initialise Clients ==================
 const client: Twilio = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -39,6 +42,7 @@ app.get('/', (req: Request, res: Response) => {
 
 // EP2: Twitter Security Check: https://developer.twitter.com/en/docs/twitter-api/enterprise/account-activity-api/guides/securing-webhooks
 app.get('/twebhooks', (req: Request, res: Response) => {
+  console.log('hi');
   const { crc_token } = req.query;
   const hmac = createHmac('sha256', process.env.TWITTER_CONSUMER_SECRET)
     .update(crc_token)
@@ -262,25 +266,6 @@ const sendMessageToTwitter = async (
           return option;
         });
       } else {
-        // Check if there are any other keywords in the message to trigger a quick reply
-        const quickReplyConfig: {
-          [key: string]: { label: string; description?: string }[];
-        } = {
-          // These times could be gathered from a calendar API for example
-          appointment: [
-            { label: '9:15 AM' },
-            { label: '10:30 AM' },
-            { label: '13:30 PM' },
-            { label: '14:30 PM' },
-          ],
-          // Product categorisation
-          style: [
-            { label: 'Medina', description: 'Natural fitting suit' },
-            { label: 'Valance', description: 'Casual summer suit' },
-            { label: 'Osprey', description: 'Slim fit three-piece' },
-            { label: 'Steeple', description: 'Morning suit' },
-          ],
-        };
         for (const keyword in quickReplyConfig) {
           if (msg.includes(keyword)) {
             options = quickReplyConfig[keyword];
@@ -305,7 +290,7 @@ const sendMessageToTwitter = async (
                 {
                   type: 'web_url',
                   label: 'Buy Now',
-                  url: 'https://checkout.stripe.com/pay/cs_live_cntUhboU9PsfSSEWZxvdcG9O4kSgZ87ITqUCOG5xYog9WzXHNMgNQGyw#fidkdWxOYHwnPyd1blppbHNgWjA0TFFqUDNBfGZNbDMyTUc1cV1VcH83cXRzYTFANldcZFF3N2RQf1RfZzEyfE5wMHJ0SmhJZ2ZPXzF1UzVrUmdVQFBOcW1gMk9RMXZyNXFuNVdPY09ibU40NTU2MF9TN0NDUCcpJ3VpbGtuQH11anZgYUxhJz8nMnZMPEZANWFhMVVjNjVuZkhIJyknd2BjYHd3YHcnPydtcXF1dj8qKnErZmoqJ3gl',
+                  url: process.env.STRIPE_PAYMENT_LINK,
                 },
               ],
             }

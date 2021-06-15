@@ -61,6 +61,8 @@ var twilio = require('twilio');
 var base64 = require('base-64');
 var fetch = require('node-fetch');
 var Twitter = require('twit');
+// ================== Util Imports ==================
+var consts_1 = require("./consts");
 // ================== Initialise Clients ==================
 var client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 var twitterClient = new Twitter({
@@ -81,6 +83,7 @@ app.get('/', function (req, res) {
 });
 // EP2: Twitter Security Check: https://developer.twitter.com/en/docs/twitter-api/enterprise/account-activity-api/guides/securing-webhooks
 app.get('/twebhooks', function (req, res) {
+    console.log('hi');
     var crc_token = req.query.crc_token;
     var hmac = createHmac('sha256', process.env.TWITTER_CONSUMER_SECRET)
         .update(crc_token)
@@ -349,26 +352,9 @@ var sendMessageToTwitter = function (msg, handle, type) { return __awaiter(void 
                 });
             }
             else {
-                // Check if there are any other keywords in the message to trigger a quick reply
-                var quickReplyConfig = {
-                    // These times could be gathered from a calendar API for example
-                    appointment: [
-                        { label: '9:15 AM' },
-                        { label: '10:30 AM' },
-                        { label: '13:30 PM' },
-                        { label: '14:30 PM' },
-                    ],
-                    // Product categorisation
-                    style: [
-                        { label: 'Medina', description: 'Natural fitting suit' },
-                        { label: 'Valance', description: 'Casual summer suit' },
-                        { label: 'Osprey', description: 'Slim fit three-piece' },
-                        { label: 'Steeple', description: 'Morning suit' },
-                    ]
-                };
-                for (var keyword in quickReplyConfig) {
+                for (var keyword in consts_1.quickReplyConfig) {
                     if (msg.includes(keyword)) {
-                        options = quickReplyConfig[keyword];
+                        options = consts_1.quickReplyConfig[keyword];
                     }
                 }
             }
@@ -388,7 +374,7 @@ var sendMessageToTwitter = function (msg, handle, type) { return __awaiter(void 
                         {
                             type: 'web_url',
                             label: 'Buy Now',
-                            url: 'https://checkout.stripe.com/pay/cs_live_cntUhboU9PsfSSEWZxvdcG9O4kSgZ87ITqUCOG5xYog9WzXHNMgNQGyw#fidkdWxOYHwnPyd1blppbHNgWjA0TFFqUDNBfGZNbDMyTUc1cV1VcH83cXRzYTFANldcZFF3N2RQf1RfZzEyfE5wMHJ0SmhJZ2ZPXzF1UzVrUmdVQFBOcW1gMk9RMXZyNXFuNVdPY09ibU40NTU2MF9TN0NDUCcpJ3VpbGtuQH11anZgYUxhJz8nMnZMPEZANWFhMVVjNjVuZkhIJyknd2BjYHd3YHcnPydtcXF1dj8qKnErZmoqJ3gl'
+                            url: process.env.STRIPE_PAYMENT_LINK
                         },
                     ]
                 }
