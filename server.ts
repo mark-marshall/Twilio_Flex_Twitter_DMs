@@ -42,7 +42,7 @@ app.get('/', (req: Request, res: Response) => {
 
 // EP2: Twitter Security Check: https://developer.twitter.com/en/docs/twitter-api/enterprise/account-activity-api/guides/securing-webhooks
 app.get('/twebhooks', (req: Request, res: Response) => {
-  console.log('hi');
+  console.log('Security Check from Twitter');
   const { crc_token } = req.query;
   const hmac = createHmac('sha256', process.env.TWITTER_CONSUMER_SECRET)
     .update(crc_token)
